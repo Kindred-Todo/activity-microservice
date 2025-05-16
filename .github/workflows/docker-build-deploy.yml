@@ -7,9 +7,21 @@ on:
 
 jobs:
     build-and-deploy:
-        runs-on: alpine-latest
+        runs-on: ubuntu-latest # Host runner
+        container:
+            image: alpine:latest # Alpine container environment
 
         steps:
+            - name: Install dependencies
+              run: |
+                  apk add --no-cache \
+                    git \
+                    docker \
+                    docker-cli-buildx \
+                    openssh-client \
+                    curl \
+                    bash
+
             - name: Checkout code
               uses: actions/checkout@v3
 
