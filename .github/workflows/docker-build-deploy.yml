@@ -25,7 +25,14 @@ jobs:
                   REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
                   echo "REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
                   echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
-
+            - name: Create .env file
+              run: |
+                  cat > .env << EOL
+                  ATLAS_ENVIRONMENT=${{ secrets.ATLAS_ENVIRONMENT }}
+                  ATLAS_CLUSTER=${{ secrets.ATLAS_CLUSTER }}
+                  ATLAS_USER=${{ secrets.ATLAS_USER }}
+                  ATLAS_PASS=${{ secrets.ATLAS_PASS }}
+                  EOL
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
               with:
