@@ -2,14 +2,12 @@ module github.com/Kindred-Todo/activity-microservice
 
 go 1.23.4
 
-require (
-	go.mongodb.org/mongo-driver v1.17.3
-	go.mongodb.org/mongo-driver/v2 v2.2.1
-)
+require go.mongodb.org/mongo-driver v1.17.3
 
 require (
+	github.com/caarlos0/env/v11 v11.3.1
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

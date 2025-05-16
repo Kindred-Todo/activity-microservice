@@ -2,18 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
-	"os"
 
 	"github.com/Kindred-Todo/activity-microservice/config"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	uri := os.Getenv("MONGODB_URI")
-	if uri == "" {
-		log.Fatal("MONGODB_URI is not set")
-	}
 	ctx := context.Background()
 
 	if err := godotenv.Load(); err != nil {
@@ -25,16 +19,18 @@ func main() {
 		fatal(ctx, "Failed to load config", err)
 	}
 
-	db, err := New(context.TODO(), uri, config.Environment)
+	uri := config.Atlas.URI()
+
+	db, err := New(ctx, uri, config.Environment)
 	if err != nil {
-		panic(err)
+		fatal(ctx, "Failed to connect to database", err)
 	}
 
 	// open up a change stream on the collection
 
 	defer func() {
-		if err := client.Disconnect(context.TODO()); err != nil {
-			panic(err)
+		if err := db.Client.Disconnect(ctx); err != nil {
+			fatal(ctx, "Failed to disconnect from database", err)
 		}
 	}()
 
