@@ -1,0 +1,18 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main ."
+bin = "./tmp/main"
+delay = 1000
+exclude_dir = ["assets", "tmp", "vendor"]
+include_ext = ["go", "tpl", "tmpl", "html"]
+exclude_regex = ["_test.go"]
+
+[cleanup]
+# Command to run before killing the process
+kill_delay = "2s"  # Delay before killing the process
+# Command to run before killing the process
+kill_cmd = "pkill -f ./tmp/main"  # Command to kill the process
+# Command to run after killing the process
+kill_signal = "SIGTERM"  # Signal to send to the process

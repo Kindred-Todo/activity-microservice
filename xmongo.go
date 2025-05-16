@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -31,8 +33,30 @@ func New(ctx context.Context, uri string, environment string) (*DB, error) {
 		return nil, err
 	}
 
-	tasksStream, err := db.Collection("completed-tasks").Watch(ctx, bson.D{},
-		options.ChangeStream().SetFullDocument(options.UpdateLookup))
+	now := time.Now()
+
+	tasksStream, err := db.Collection("completed-tasks").Watch(ctx, 
+		[]bson.D{
+			{
+				{"$match", bson.D{
+					{"operationType", bson.D{
+						{"$in", []string{"insert", "update", "replace"}},
+					}},
+					{"fullDocument.timeCompleted", bson.D{
+						{"$gte", now},
+					}},
+				}},
+
+
+			},
+		},
+		options.ChangeStream().
+			SetFullDocument(options.UpdateLookup).
+			SetStartAtOperationTime(&primitive.Timestamp{
+				T: uint32(time.Now().Unix()),
+				I: 0,
+			}),
+	)
 
 	if err != nil {
 		return nil, err

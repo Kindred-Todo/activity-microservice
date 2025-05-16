@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 )
 
 func fatal(ctx context.Context, msg string, err error) {
+	fmt.Println(msg, err)
 	slog.LogAttrs(
 		ctx,
 		slog.LevelError,
