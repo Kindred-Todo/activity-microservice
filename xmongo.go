@@ -42,12 +42,10 @@ func New(ctx context.Context, uri string, environment string) (*DB, error) {
 					{"operationType", bson.D{
 						{"$in", []string{"insert", "update", "replace"}},
 					}},
-					{"fullDocument.timeCompleted", bson.D{
-						{"$gte", now},
+					{"fullDocument.timestamp", bson.D{
+						{"$gte", now.Add(-5 * time.Hour)},
 					}},
 				}},
-
-
 			},
 		},
 		options.ChangeStream().

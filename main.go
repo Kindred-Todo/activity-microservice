@@ -71,6 +71,11 @@ func main() {
 			}
 
 			slog.Info("Task", "task", task.Content, "timestamp", task.Timestamp)
+			err := updateMonthlyActivity(ctx, task.UserID, task.Timestamp, db)
+			if err != nil {
+				slog.Error("Failed to update monthly activity", "error", err)
+			}
+			
 		}
 	}()
 
@@ -90,3 +95,5 @@ func main() {
 		slog.Error("Failed to disconnect from database", "error", err)
 	}
 }
+
+
