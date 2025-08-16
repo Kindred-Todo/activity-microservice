@@ -29,7 +29,7 @@ func updateMonthlyActivity(ctx context.Context, userId primitive.ObjectID, compl
 	opts := options.Update().SetUpsert(true)
 	optsFilter := options.Update().SetUpsert(true).SetArrayFilters(arrayFilters)
 				
-  // upsert a doucment for the current month 
+    // upsert a doucment for the current month 
 	result, err := collection.UpdateOne(
 		ctx, bson.M{"user": userId, "year": year, "month": month},
 		 bson.M{
@@ -70,4 +70,20 @@ func updateMonthlyActivity(ctx context.Context, userId primitive.ObjectID, compl
 		
 
 	return nil 	
+}
+
+func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt time.Time, db *DB) error {
+	collection := db.Collections["users"]
+
+	_, err := collection.UpdateOne(
+		ctx, bson.M{"_id": userId},
+		bson.M{"$cond": bson.M{
+			"if": bson.M{"streakEligible": true},
+			"then": bson.M{"$inc": bson.M{"streak": 1, "streakEligible": false}},
+			"else": bson.M{"$inc": bson.M{"streak": 0}},
+		}},
+	)
+
+	return err
+	
 }

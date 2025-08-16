@@ -76,6 +76,11 @@ func main() {
 				slog.Error("Failed to update monthly activity", "error", err)
 			}
 			
+			// edit streak 
+			err = updateStreak(ctx, task.UserID, task.Timestamp, db)
+			if err != nil {
+				slog.Error("Failed to update streak", "error", err)
+			}
 		}
 		if db.Stream == nil {
 			slog.Error("Stream closed unexpectedly")
