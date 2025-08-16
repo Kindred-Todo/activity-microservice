@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
+	"time"
+	
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,6 +32,7 @@ var pipeline = []bson.D{
 
 func reconnectStream(ctx context.Context, db *DB) error {
 	db.Stream.Close(ctx)
+	var err error
 	db.Stream, err = db.DB.Collection("completed-tasks").Watch(ctx, 
 		pipeline,
 		options.ChangeStream().
@@ -42,15 +46,19 @@ func reconnectStream(ctx context.Context, db *DB) error {
 }
 
 func reconnectWithBackoff(ctx context.Context, db *DB) error {
-	backoff := time.NewExponentialBackOff()
-	backoff.InitialInterval = 1 * time.Second
-	backoff.MaxInterval = 10 * time.Second
-	backoff.MaxElapsedTime = 0
+	initialInterval := 1 * time.Second
+	maxInterval := 120 * time.Second
+	currentInterval := initialInterval
 
 	for {
 		if err := reconnectStream(ctx, db); err != nil {
 			slog.Error("Failed to reconnect stream", "error", err)
-			time.Sleep(backoff.NextBackOff())
+			time.Sleep(currentInterval)
+			// Exponential backoff: double the interval, but cap at maxInterval
+			currentInterval *= 2
+			if currentInterval > maxInterval {
+				currentInterval = maxInterval
+			}
 		} else {
 			return nil
 		}
