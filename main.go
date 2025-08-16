@@ -77,6 +77,14 @@ func main() {
 			}
 			
 		}
+		if !db.Stream.IsClosed() {
+			slog.Error("Stream closed unexpectedly")
+			if err := reconnectWithBackoff(ctx, db); err != nil {
+				slog.Error("Failed to reconnect stream", "error", err)
+			} else {
+				slog.Info("Reconnected stream")
+			}
+		}
 	}()
 
 	// Wait for shutdown signal

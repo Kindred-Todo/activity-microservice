@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -17,6 +15,46 @@ type DB struct {
 	DB          *mongo.Database
 	Collections map[string]*mongo.Collection
 	Stream      *mongo.ChangeStream
+}
+
+var pipeline = []bson.D{
+	{
+		{"$match", bson.D{
+			{"operationType", bson.D{
+				{"$in", []string{"insert", "update", "replace"}},
+			}},
+		}},
+	},
+}
+
+func reconnectStream(ctx context.Context, db *DB) error {
+	db.Stream.Close(ctx)
+	db.Stream, err = db.DB.Collection("completed-tasks").Watch(ctx, 
+		pipeline,
+		options.ChangeStream().
+			SetFullDocument(options.UpdateLookup),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect stream: %w", err)
+	}
+	return nil
+
+}
+
+func reconnectWithBackoff(ctx context.Context, db *DB) error {
+	backoff := time.NewExponentialBackOff()
+	backoff.InitialInterval = 1 * time.Second
+	backoff.MaxInterval = 10 * time.Second
+	backoff.MaxElapsedTime = 0
+
+	for {
+		if err := reconnectStream(ctx, db); err != nil {
+			slog.Error("Failed to reconnect stream", "error", err)
+			time.Sleep(backoff.NextBackOff())
+		} else {
+			return nil
+		}
+	}
 }
 
 func New(ctx context.Context, uri string, environment string) (*DB, error) {
@@ -33,27 +71,10 @@ func New(ctx context.Context, uri string, environment string) (*DB, error) {
 		return nil, err
 	}
 
-	now := time.Now()
-
 	tasksStream, err := db.Collection("completed-tasks").Watch(ctx, 
-		[]bson.D{
-			{
-				{"$match", bson.D{
-					{"operationType", bson.D{
-						{"$in", []string{"insert", "update", "replace"}},
-					}},
-					{"fullDocument.timestamp", bson.D{
-						{"$gte", now.Add(-5 * time.Hour)},
-					}},
-				}},
-			},
-		},
+		pipeline,
 		options.ChangeStream().
-			SetFullDocument(options.UpdateLookup).
-			SetStartAtOperationTime(&primitive.Timestamp{
-				T: uint32(time.Now().Unix()),
-				I: 0,
-			}),
+			SetFullDocument(options.UpdateLookup),
 	)
 
 	if err != nil {
