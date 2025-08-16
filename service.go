@@ -20,32 +20,32 @@ func updateMonthlyActivity(ctx context.Context, userId primitive.ObjectID, compl
 
 	// array filter is that the day has to match
 	arrayFilters := options.ArrayFilters{
-			Filters: []interface{}{
-					bson.M{"elem.day": day},
-			},
+		Filters: []interface{}{
+			bson.M{"elem.day": day},
+		},
 	}
 
 	// array filters
 	opts := options.Update().SetUpsert(true)
 	optsFilter := options.Update().SetUpsert(true).SetArrayFilters(arrayFilters)
-				
-    // upsert a doucment for the current month 
-	result, err := collection.UpdateOne(
+
+	// upsert a doucment for the current month
+	_, err := collection.UpdateOne(
 		ctx, bson.M{"user": userId, "year": year, "month": month},
-		 bson.M{
-			"$inc": bson.M{"totalCount": 1},
-			"$set": bson.M{"lastUpdated": time.Now().UTC()},
+		bson.M{
+			"$inc":         bson.M{"totalCount": 1},
+			"$set":         bson.M{"lastUpdated": time.Now().UTC()},
 			"$setOnInsert": bson.M{"days": []bson.M{{"day": day, "count": 1, "level": 1}}}},
-		 opts)
+		opts)
 	if err != nil {
 		return err
 	}
 
 	// now try to edit the actual day
-	result, err = collection.UpdateOne(
+	result, err := collection.UpdateOne(
 		ctx, bson.M{"user": userId, "year": year, "month": month},
 		bson.M{
-			"$inc": bson.M{"days.$[elem].count": 1},
+			"$inc":         bson.M{"days.$[elem].count": 1},
 			"$setOnInsert": bson.M{"days.$[elem].level": 1},
 		},
 		optsFilter,
@@ -67,23 +67,37 @@ func updateMonthlyActivity(ctx context.Context, userId primitive.ObjectID, compl
 	}
 
 	fmt.Println(result)
-		
 
-	return nil 	
+	return nil
 }
 
 func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt time.Time, db *DB) error {
 	collection := db.Collections["users"]
 
-	_, err := collection.UpdateOne(
-		ctx, bson.M{"_id": userId},
-		bson.M{"$cond": bson.M{
-			"if": bson.M{"streakEligible": true},
-			"then": bson.M{"$inc": bson.M{"streak": 1, "streakEligible": false}},
-			"else": bson.M{"$inc": bson.M{"streak": 0}},
-		}},
-	)
+	var result bson.M
+	err := collection.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": userId},
+		bson.M{
+			"$inc": bson.M{"streak": bson.M{
+				"$cond": bson.M{
+					"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
+					"then": 1,
+					"else": 0,
+				},
+			}},
+			"$set": bson.M{
+				"streakEligible": bson.M{
+					"$cond": bson.M{
+						"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
+						"then": false,
+						"else": "$streakEligible",
+					},
+				},
+			},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&result)
 
 	return err
-	
 }
