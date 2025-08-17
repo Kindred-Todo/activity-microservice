@@ -80,8 +80,12 @@ func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt ti
 			"$match": bson.M{"_id": userId},
 		},
 		{
+			"$inc": bson.M{
+				"tasks_complete": 1,
+			},
+		},
+		{
 			"$addFields": bson.M{
-				"tasks_complete": bson.M{"$inc": 1},
 				"streak": bson.M{
 					"$cond": bson.M{
 						"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
