@@ -74,22 +74,18 @@ func updateMonthlyActivity(ctx context.Context, userId primitive.ObjectID, compl
 func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt time.Time, db *DB) error {
 	collection := db.Collections["users"]
 
-	var result bson.M
-	err := collection.FindOneAndUpdate(
-		ctx,
-		bson.M{"_id": userId},
-		bson.M{
-			"$set": bson.M{
+	// Use aggregation pipeline with $merge to efficiently update streak in a single operation
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{"_id": userId},
+		},
+		{
+			"$addFields": bson.M{
 				"streak": bson.M{
-					"$add": []interface{}{
-						"$streak",
-						bson.M{
-							"$cond": bson.M{
-								"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
-								"then": 1,
-								"else": 0,
-							},
-						},
+					"$cond": bson.M{
+						"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
+						"then": bson.M{"$add": []interface{}{"$streak", 1}},
+						"else": "$streak",
 					},
 				},
 				"streakEligible": bson.M{
@@ -101,8 +97,23 @@ func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt ti
 				},
 			},
 		},
-		options.FindOneAndUpdate().SetReturnDocument(options.After),
-	).Decode(&result)
+		{
+			"$merge": bson.M{
+				"into":        "users",
+				"on":          "_id",
+				"whenMatched": "replace",
+				"whenNotMatched": bson.M{
+					"$replaceWith": bson.M{
+						"_id":            userId,
+						"streak":         0,
+						"streakEligible": false,
+					},
+				},
+			},
+		},
+	}
 
+	// Execute the aggregation pipeline - this performs the update directly
+	_, err := collection.Aggregate(ctx, pipeline)
 	return err
 }
