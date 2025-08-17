@@ -99,16 +99,10 @@ func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt ti
 		},
 		{
 			"$merge": bson.M{
-				"into":        "users",
-				"on":          "_id",
-				"whenMatched": "replace",
-				"whenNotMatched": bson.M{
-					"$replaceWith": bson.M{
-						"_id":            userId,
-						"streak":         0,
-						"streakEligible": false,
-					},
-				},
+				"into":           "users",
+				"on":             "_id",
+				"whenMatched":    "merge",
+				"whenNotMatched": "discard",
 			},
 		},
 	}
