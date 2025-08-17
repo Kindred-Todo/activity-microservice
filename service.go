@@ -79,14 +79,19 @@ func updateStreak(ctx context.Context, userId primitive.ObjectID, completedAt ti
 		ctx,
 		bson.M{"_id": userId},
 		bson.M{
-			"$inc": bson.M{"streak": bson.M{
-				"$cond": bson.M{
-					"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
-					"then": 1,
-					"else": 0,
-				},
-			}},
 			"$set": bson.M{
+				"streak": bson.M{
+					"$add": []interface{}{
+						"$streak",
+						bson.M{
+							"$cond": bson.M{
+								"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
+								"then": 1,
+								"else": 0,
+							},
+						},
+					},
+				},
 				"streakEligible": bson.M{
 					"$cond": bson.M{
 						"if":   bson.M{"$eq": []interface{}{"$streakEligible", true}},
