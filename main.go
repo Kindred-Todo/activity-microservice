@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Kindred-Todo/activity-microservice/config"
 	"github.com/joho/godotenv"
@@ -70,14 +71,22 @@ func main() {
 				}
 			}
 
-			slog.Info("Task", "task", task.Content, "timestamp", task.Timestamp)
-			err := updateMonthlyActivity(ctx, task.UserID, task.Timestamp, db)
+			// Use TimeCompleted if available, otherwise fall back to current time
+			completedAt := time.Now().UTC()
+			if task.TimeCompleted != nil {
+				completedAt = *task.TimeCompleted
+			} else {
+				slog.Warn("TimeCompleted is nil, falling back to current time", "taskID", task.ID, "taskContent", task.Content)
+			}
+
+			slog.Info("Task", "task", task.Content, "completedAt", completedAt)
+			err := updateMonthlyActivity(ctx, task.UserID, completedAt, db)
 			if err != nil {
 				slog.Error("Failed to update monthly activity", "error", err)
 			}
 			
 			// edit streak 
-			err = updateStreak(ctx, task.UserID, task.Timestamp, db)
+			err = updateStreak(ctx, task.UserID, completedAt, db)
 			if err != nil {
 				slog.Error("Failed to update streak", "error", err)
 			}
