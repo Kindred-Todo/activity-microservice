@@ -1,9 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
 type CompletedTaskDocument struct {
@@ -31,7 +36,7 @@ type CompletedTaskDocument struct {
 
 	CategoryID primitive.ObjectID `bson:"category,omitempty" json:"category,omitempty"`
 	UserID     primitive.ObjectID `bson:"user,omitempty" json:"user,omitempty"`
-	TimeTaken  *time.Time         `bson:"timeTaken,omitempty" json:"timeTaken,omitempty"`
+	TimeTaken  *ISO8601Duration   `bson:"timeTaken,omitempty" json:"timeTaken,omitempty"`
 	TimeCompleted *time.Time `bson:"timeCompleted,omitempty" json:"timeCompleted,omitempty"`
 }
 
@@ -47,4 +52,63 @@ type ChecklistItem struct {
 	Content   string `bson:"content" json:"content"`
 	Completed bool   `bson:"completed" json:"completed"`
 	Order     int    `bson:"order" json:"order"`
+}
+
+// ISO8601Duration represents an ISO 8601 duration (e.g., "PT0S", "PT1H30M")
+type ISO8601Duration struct {
+	time.Duration
+}
+
+// UnmarshalBSONValue implements the bson.ValueUnmarshaler interface
+func (d *ISO8601Duration) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+	if t != bsontype.String {
+		return fmt.Errorf("invalid bson type for ISO8601Duration, got %v", t)
+	}
+	
+	str, _, ok := bsoncore.ReadString(data)
+	if !ok {
+		return fmt.Errorf("failed to read string from bson data")
+	}
+	
+	duration, err := parseISO8601Duration(str)
+	if err != nil {
+		return err
+	}
+	
+	d.Duration = duration
+	return nil
+}
+
+// parseISO8601Duration parses an ISO 8601 duration string (e.g., "PT0S", "PT1H30M45S")
+func parseISO8601Duration(s string) (time.Duration, error) {
+	// ISO 8601 duration format: P[n]Y[n]M[n]DT[n]H[n]M[n]S
+	// We'll support the time portion (after T) for now
+	re := regexp.MustCompile(`^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$`)
+	matches := re.FindStringSubmatch(s)
+	
+	if matches == nil {
+		return 0, fmt.Errorf("invalid ISO 8601 duration format: %s", s)
+	}
+	
+	var duration time.Duration
+	
+	// Parse hours
+	if matches[4] != "" {
+		hours, _ := strconv.Atoi(matches[4])
+		duration += time.Duration(hours) * time.Hour
+	}
+	
+	// Parse minutes
+	if matches[5] != "" {
+		minutes, _ := strconv.Atoi(matches[5])
+		duration += time.Duration(minutes) * time.Minute
+	}
+	
+	// Parse seconds
+	if matches[6] != "" {
+		seconds, _ := strconv.ParseFloat(matches[6], 64)
+		duration += time.Duration(seconds * float64(time.Second))
+	}
+	
+	return duration, nil
 }

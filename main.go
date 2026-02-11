@@ -16,7 +16,7 @@ import (
 
 func main() {
 	fmt.Println("Starting activity microservice")
-	
+
 	// Create a context that can be cancelled
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,8 +75,8 @@ func main() {
 			if err != nil {
 				slog.Error("Failed to update monthly activity", "error", err)
 			}
-			
-			// edit streak 
+
+			// edit streak
 			err = updateStreak(ctx, task.UserID, task.Timestamp, db)
 			if err != nil {
 				slog.Error("Failed to update streak", "error", err)
@@ -95,10 +95,10 @@ func main() {
 	// Wait for shutdown signal
 	<-sigChan
 	slog.Info("Received shutdown signal, initiating graceful shutdown")
-	
+
 	// Cancel the context to stop the stream
 	cancel()
-	
+
 	// Wait for the stream to close
 	wg.Wait()
 
@@ -108,5 +108,3 @@ func main() {
 		slog.Error("Failed to disconnect from database", "error", err)
 	}
 }
-
-
